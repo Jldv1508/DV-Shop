@@ -1,11 +1,11 @@
-const CACHE_NAME = "dv-shop-pwa-20260611ar";
+const CACHE_NAME = "dv-shop-pwa-20260611as";
 const APP_SHELL = [
     "./",
     "./dv-shop.html",
-    "./dv-shop-app.css?v=20260611ar",
-    "./dv-shop-app.js?v=20260611ar",
-    "./dv-shop-catalog.js?v=20260611ar",
-    "./manifest.webmanifest?v=20260611ar",
+    "./dv-shop-app.css?v=20260611as",
+    "./dv-shop-app.js?v=20260611as",
+    "./dv-shop-catalog.js?v=20260611as",
+    "./manifest.webmanifest?v=20260611as",
     "./dv-shop-icon-192.png",
     "./dv-shop-icon-512.png"
 ];

@@ -3566,10 +3566,11 @@ async function fetchRemoteStateRecord(config) {
     });
 
     if (!response.ok) {
+        const errorBody = (await response.text()).slice(0, 240);
         // #region debug-point B:pull-http-error
-        fetch(DEBUG_SYNC_SERVER_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: DEBUG_SYNC_SESSION_ID, runId: "pre-fix", hypothesisId: "B", location: "dv-shop-app.js:fetchRemoteStateRecord:http-error", msg: "[DEBUG] Supabase fetch returned error", data: { status: response.status, householdId: config.householdId }, ts: Date.now() }) }).catch(() => {});
+        fetch(DEBUG_SYNC_SERVER_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: DEBUG_SYNC_SESSION_ID, runId: "pre-fix", hypothesisId: "B", location: "dv-shop-app.js:fetchRemoteStateRecord:http-error", msg: "[DEBUG] Supabase fetch returned error", data: { status: response.status, householdId: config.householdId, errorBody }, ts: Date.now() }) }).catch(() => {});
         // #endregion
-        throw new Error(`Sync GET ${response.status}`);
+        throw new Error(`Sync GET ${response.status}: ${errorBody}`);
     }
 
     const rows = await response.json();
@@ -3654,10 +3655,11 @@ async function pushRemoteState(manual = false) {
         });
 
         if (!response.ok) {
+            const errorBody = (await response.text()).slice(0, 240);
             // #region debug-point B:push-http-error
-            fetch(DEBUG_SYNC_SERVER_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: DEBUG_SYNC_SESSION_ID, runId: "pre-fix", hypothesisId: "B", location: "dv-shop-app.js:pushRemoteState:http-error", msg: "[DEBUG] Supabase upsert returned error", data: { status: response.status, manual }, ts: Date.now() }) }).catch(() => {});
+            fetch(DEBUG_SYNC_SERVER_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: DEBUG_SYNC_SESSION_ID, runId: "pre-fix", hypothesisId: "B", location: "dv-shop-app.js:pushRemoteState:http-error", msg: "[DEBUG] Supabase upsert returned error", data: { status: response.status, manual, errorBody }, ts: Date.now() }) }).catch(() => {});
             // #endregion
-            throw new Error(`Sync POST ${response.status}`);
+            throw new Error(`Sync POST ${response.status}: ${errorBody}`);
         }
 
         const rows = await response.json();
@@ -3674,9 +3676,10 @@ async function pushRemoteState(manual = false) {
         // #region debug-point B:push-catch
         fetch(DEBUG_SYNC_SERVER_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: DEBUG_SYNC_SESSION_ID, runId: "pre-fix", hypothesisId: "B", location: "dv-shop-app.js:pushRemoteState:catch", msg: "[DEBUG] pushRemoteState failed", data: { manual, error: error instanceof Error ? error.message : String(error) }, ts: Date.now() }) }).catch(() => {});
         // #endregion
-        setSyncStatus("Error al subir a la nube", true);
+        const debugMessage = error instanceof Error ? error.message : String(error);
+        setSyncStatus(`Error al subir: ${debugMessage.slice(0, 140)}`, true);
         if (manual) {
-            showToast("No se pudo subir a la nube", 2400);
+            showToast(`No se pudo subir: ${debugMessage.slice(0, 80)}`, 3200);
         }
         return false;
     } finally {
@@ -3737,9 +3740,10 @@ async function pullRemoteState(manual = false) {
         return true;
     } catch (error) {
         console.error("Error bajando sync:", error);
-        setSyncStatus("Error al leer la nube", true);
+        const debugMessage = error instanceof Error ? error.message : String(error);
+        setSyncStatus(`Error al leer: ${debugMessage.slice(0, 140)}`, true);
         if (manual) {
-            showToast("No se pudo leer la nube", 2400);
+            showToast(`No se pudo leer: ${debugMessage.slice(0, 80)}`, 3200);
         }
         return false;
     } finally {
@@ -5790,7 +5794,7 @@ window.pullRemoteState = pullRemoteState;
 
 if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=20260611ar", { scope: "./" }).catch((error) => {
+        navigator.serviceWorker.register("./service-worker.js?v=20260611as", { scope: "./" }).catch((error) => {
             console.error("No se pudo registrar el service worker:", error);
         });
     });
