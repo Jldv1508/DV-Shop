@@ -251,6 +251,7 @@ let state = {
     groupColorOverrides: {},
     trendOverrides: {},
     priceHistory: {},
+    lastUpdated: null,
     lastPriceRefreshAt: null,
     currentVisualBlock: null,
     currentCategoryId: null,
@@ -3397,9 +3398,9 @@ function buildPersistedData() {
         trendOverrides: state.trendOverrides,
         priceHistory: state.priceHistory,
         lastPriceRefreshAt: state.lastPriceRefreshAt,
+        lastUpdated: state.lastUpdated || new Date().toISOString(),
         theme: getCurrentTheme(),
-        version: APP_VERSION,
-        lastUpdated: new Date().toISOString()
+        version: APP_VERSION
     };
 }
 
@@ -3419,6 +3420,7 @@ function applyPersistedData(data, options = {}) {
     state.groupColorOverrides = data.groupColorOverrides && typeof data.groupColorOverrides === "object" ? data.groupColorOverrides : {};
     state.trendOverrides = data.trendOverrides && typeof data.trendOverrides === "object" ? data.trendOverrides : {};
     state.priceHistory = data.priceHistory && typeof data.priceHistory === "object" ? data.priceHistory : {};
+    state.lastUpdated = data.lastUpdated || state.lastUpdated || new Date().toISOString();
     state.lastPriceRefreshAt = data.lastPriceRefreshAt || null;
 
     updateCartUI();
@@ -3448,7 +3450,7 @@ function applyPersistedData(data, options = {}) {
     if (persistLocal) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
             ...buildPersistedData(),
-            lastUpdated: data.lastUpdated || new Date().toISOString()
+            lastUpdated: state.lastUpdated || data.lastUpdated || new Date().toISOString()
         }));
     }
 
@@ -3459,6 +3461,7 @@ function applyPersistedData(data, options = {}) {
 
 function saveToLocalStorage(options = {}) {
     const { skipRemoteSync = false } = options;
+    state.lastUpdated = new Date().toISOString();
     const dataToSave = buildPersistedData();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
     updateStatsInfo();
@@ -5749,7 +5752,7 @@ window.pullRemoteState = pullRemoteState;
 
 if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=20260611ap", { scope: "./" }).catch((error) => {
+        navigator.serviceWorker.register("./service-worker.js?v=20260611aq", { scope: "./" }).catch((error) => {
             console.error("No se pudo registrar el service worker:", error);
         });
     });
