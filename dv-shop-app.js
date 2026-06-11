@@ -1,5 +1,4 @@
 const LOCAL_PROXY_URL = "/__proxy?url=";
-const PHP_PROXY_URL = "/proxy.php?url=";
 const PROXY_URL = "https://api.allorigins.win/raw?url=";
 const API_BASE = "https://tienda.mercadona.es/api";
 const PLACEHOLDER_IMAGE = "https://placehold.co/120x120/7c3aed/ffffff?text=DV";
@@ -3877,7 +3876,6 @@ async function fetchWithProxy(url) {
     const candidates = [];
     if (typeof location !== "undefined" && location.protocol.startsWith("http")) {
         candidates.push(`${LOCAL_PROXY_URL}${encodeURIComponent(url)}`);
-        candidates.push(`${PHP_PROXY_URL}${encodeURIComponent(url)}`);
     }
     candidates.push(`${PROXY_URL}${encodeURIComponent(url)}`);
 
@@ -5411,7 +5409,7 @@ window.shareFormFile = shareFormFile;
 
 if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=20260611an", { scope: "./" }).catch((error) => {
+        navigator.serviceWorker.register("./service-worker.js?v=20260611al", { scope: "./" }).catch((error) => {
             console.error("No se pudo registrar el service worker:", error);
         });
     });

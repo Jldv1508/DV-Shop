@@ -70,10 +70,10 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 def main():
-    host = "0.0.0.0"
+    host = os.environ.get("HOST", "0.0.0.0")
     port = int(os.environ.get("PORT", "8000"))
     server = ThreadingHTTPServer((host, port), Handler)
-    print(f"DV Shop server running on http://{host}:{port}", flush=True)
+    print(f"DV Shop server running on http://{host}:{port}")
     server.serve_forever()
 
 
