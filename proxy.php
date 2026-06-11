@@ -16,6 +16,22 @@ if (!$url) {
     exit;
 }
 
+$parsed = parse_url($url);
+$scheme = isset($parsed["scheme"]) ? $parsed["scheme"] : "";
+$host = isset($parsed["host"]) ? $parsed["host"] : "";
+$path = isset($parsed["path"]) ? $parsed["path"] : "";
+
+$isHttp = $scheme === "http" || $scheme === "https";
+$isAllowedHost = $host === "tienda.mercadona.es";
+$isAllowedPath = str_starts_with($path, "/api/");
+
+if (!$isHttp || !$isAllowedHost || !$isAllowedPath) {
+    http_response_code(403);
+    header("Content-Type: text/plain; charset=utf-8");
+    echo "Forbidden url";
+    exit;
+}
+
 $ch = curl_init($url);
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
