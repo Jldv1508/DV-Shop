@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="volcano">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#ea580c">
+    <meta name="description" content="DV Shop, tu lista de compra inteligente y compartible en formato app.">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="DV Shop">
+    <title>DV Shop - Tu compra inteligente</title>
+    <link rel="manifest" href="./manifest.webmanifest?v=20260611al">
+    <link rel="icon" type="image/png" sizes="192x192" href="./dv-shop-icon-192.png">
+    <link rel="apple-touch-icon" href="./dv-shop-icon-192.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="./dv-shop-app.css?v=20260611al">
+</head>
+<body>
+    <div id="app">
+        <div class="header">
+            <div class="logo">
+                <i class="fas fa-cart-shopping"></i>
+                <div>
+                    <span>DV <span style="font-weight: normal;">Shop</span></span>
+                    <span class="app-subtitle">Una nueva forma de comprar</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button type="button" class="header-icon-btn hidden" id="categoriesBackBtn" onclick="goBackToVisualBlocks()" aria-label="Volver a grupos">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <button type="button" class="header-icon-btn" onclick="toggleSearch()" aria-label="Buscar">
+                    <i class="fas fa-search"></i>
+                </button>
+                <button type="button" class="header-icon-btn" id="preloadCatalogBtn" onclick="preloadAllProducts()" aria-label="Precargar catálogo">
+                    <i class="fas fa-box-open"></i>
+                </button>
+                <button type="button" class="cart-icon" onclick="switchView('cart')" aria-label="Abrir lista">
+                    <i class="fas fa-list-check"></i>
+                    <span id="cartBadge" class="cart-badge">0</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="searchBar" class="search-bar hidden">
+            <div class="search-container">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Buscar productos... (ej: leche, aceite, Nestlé)">
+                <button type="button" onclick="closeSearch()" aria-label="Cerrar búsqueda">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="search-hint">Busca por nombre o marca. Si precargas el catálogo, también podrás buscar mejor sin depender de la API.</div>
+            <div id="searchResults" class="search-results"></div>
+        </div>
+
+        <div id="categoriesView" class="view active">
+            <div class="view-header">
+                <h2 id="categoriesTitle"></h2>
+            </div>
+            <p id="catalogStatus" class="catalog-status">Preparando catálogo local...</p>
+            <div id="categoriesGrid" class="categories-grid">
+                <div class="loading"><i class="fas fa-spinner fa-spin"></i> Cargando categorías...</div>
+            </div>
+            <div class="progress-bar hidden" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+        </div>
+
+        <div id="productsView" class="view">
+            <div class="view-header">
+                <h2 id="productsTitle">Productos</h2>
+            </div>
+            <div id="productsGrid" class="products-grid">
+                <div class="loading"><i class="fas fa-spinner fa-spin"></i> Cargando productos...</div>
+            </div>
+        </div>
+
+        <div id="subcategoriesView" class="view">
+            <div class="view-header">
+                <h2 id="subcategoriesTitle">Subcategorías</h2>
+            </div>
+            <div id="subcategoriesGrid" class="categories-grid">
+                <div class="loading"><i class="fas fa-spinner fa-spin"></i> Cargando subcategorías...</div>
+            </div>
+        </div>
+
+        <div id="cartView" class="view">
+            <div class="view-header">
+                <h2><i class="fas fa-list-check"></i> Lista</h2>
+            </div>
+            <div id="cartContent"></div>
+        </div>
+
+        <div id="simulationView" class="view">
+            <div class="view-header">
+                <h2><i class="fas fa-clock-rotate-left"></i> Historial</h2>
+            </div>
+            <div id="simulationContent"></div>
+        </div>
+
+        <div id="statsView" class="view">
+            <div class="view-header">
+                <h2><i class="fas fa-chart-line"></i> Estadísticas</h2>
+            </div>
+            <div id="statsContent"></div>
+        </div>
+
+        <div id="settingsView" class="view">
+            <div class="view-header">
+                <h2><i class="fas fa-cog"></i> Configuración</h2>
+            </div>
+            <div class="settings-content quick-panel">
+                <div class="setting-card setting-card-compact budget-card">
+                    <h3><i class="fas fa-euro-sign"></i> Presupuesto</h3>
+                    <div class="setting-input budget-input-row">
+                        <input type="number" id="budgetInput" step="0.01" placeholder="Sin límite">
+                        <button type="button" class="btn-primary" onclick="saveBudget()"><i class="fas fa-floppy-disk"></i> Guardar</button>
+                    </div>
+                    <p id="budgetDisplay">Sin límite de presupuesto</p>
+                </div>
+
+                <div class="setting-card setting-card-compact">
+                    <h3><i class="fas fa-palette"></i> Tema</h3>
+                    <div class="setting-input">
+                        <select id="themeSelect" class="theme-select" onchange="setTheme(this.value)">
+                            <option value="aurora">Aurora</option>
+                            <option value="sunset">Sunset</option>
+                            <option value="ocean">Ocean</option>
+                            <option value="forest">Forest</option>
+                            <option value="midnight">Midnight</option>
+                            <option value="citrus">Citrus</option>
+                            <option value="rose">Rose</option>
+                            <option value="mono">Mono</option>
+                            <option value="candy">Candy</option>
+                            <option value="lavender">Lavender</option>
+                            <option value="ice">Ice</option>
+                            <option value="ember">Ember</option>
+                            <option value="mint">Mint</option>
+                            <option value="sand">Sand</option>
+                            <option value="neon">Neon</option>
+                            <option value="coffee">Coffee</option>
+                            <option value="calm">Calm</option>
+                            <option value="focus">Focus</option>
+                            <option value="joy">Joy</option>
+                            <option value="energy">Energy</option>
+                            <option value="cozy">Cozy</option>
+                            <option value="dreamy">Dreamy</option>
+                            <option value="berry">Berry</option>
+                            <option value="jade">Jade</option>
+                            <option value="nord">Nord</option>
+                            <option value="orchid">Orchid</option>
+                            <option value="solar">Solar</option>
+                            <option value="volcano">Volcano</option>
+                            <option value="bubblegum">Bubblegum</option>
+                            <option value="graphite">Graphite</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-card setting-card-compact">
+                    <h3><i class="fas fa-database"></i> Catálogo</h3>
+                    <div class="settings-actions-grid">
+                        <button type="button" class="btn-secondary" onclick="preloadAllProducts()">
+                            <i class="fas fa-box-open"></i> Precargar
+                        </button>
+                        <button type="button" class="btn-secondary" onclick="exportCatalog()">
+                            <i class="fas fa-file-export"></i> Exportar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="setting-card setting-card-compact">
+                    <h3><i class="fas fa-right-left"></i> Lista</h3>
+                    <div class="settings-actions-grid">
+                        <button type="button" class="btn-secondary" onclick="openShareListModal()">
+                            <i class="fas fa-share-nodes"></i> Compartir
+                        </button>
+                        <button type="button" class="btn-secondary" onclick="exportData()">
+                            <i class="fas fa-file-export"></i> Exportar lista
+                        </button>
+                        <button type="button" class="btn-secondary" onclick="importData()">
+                            <i class="fas fa-upload"></i> Importar
+                        </button>
+                        <button type="button" class="btn-soft" onclick="clearCart()">
+                            <i class="fas fa-broom"></i> Vaciar lista
+                        </button>
+                    </div>
+                </div>
+
+                <div class="setting-card setting-card-compact">
+                    <h3><i class="fas fa-icons"></i> Iconos</h3>
+                    <div class="icon-control-grid">
+                        <div class="setting-input icon-control-row">
+                            <select id="iconTargetType" class="theme-select" onchange="populateIconTargetOptions(); syncIconSelectionFromTarget();">
+                                <option value="category">Categoria</option>
+                                <option value="subcategory">Subcategoria</option>
+                            </select>
+                            <select id="iconTargetName" class="theme-select" onchange="syncIconSelectionFromTarget()"></select>
+                        </div>
+                        <div class="setting-input icon-control-row">
+                            <select id="iconSourceMode" class="theme-select" onchange="updateIconSourceMode()">
+                                <option value="list">Desde lista</option>
+                                <option value="file">Desde archivo</option>
+                            </select>
+                            <select id="iconListSelect" class="theme-select" onchange="selectIconOption(this.value)"></select>
+                        </div>
+                        <input id="iconClassInput" type="hidden">
+                        <div class="icon-picker-shell">
+                            <div class="icon-preview-box">
+                                <i id="iconPreviewGlyph" class="fas fa-icons"></i>
+                            </div>
+                            <div id="iconSelectedLabel" class="icon-selected-label">Seleccionado: icono</div>
+                        </div>
+                        <p id="iconOverrideSummary" class="icon-summary-line">Sin iconos personalizados.</p>
+                        <div id="iconFileActions" class="settings-actions-grid compact-single hidden">
+                            <button type="button" class="btn-secondary" onclick="importIconForTarget()">
+                                <i class="fas fa-file-import"></i> Importar archivo
+                            </button>
+                        </div>
+                        <div class="settings-actions-grid">
+                            <button type="button" class="btn-primary" onclick="saveIconOverride()">
+                                <i class="fas fa-floppy-disk"></i> Guardar icono
+                            </button>
+                            <button type="button" class="btn-soft" onclick="deleteCurrentIconOverride()">
+                                <i class="fas fa-trash"></i> Quitar actual
+                            </button>
+                        </div>
+                        <div class="settings-actions-grid">
+                            <button type="button" class="btn-secondary" onclick="importIconOverrides()">
+                                <i class="fas fa-upload"></i> Importar lista
+                            </button>
+                            <button type="button" class="btn-secondary" onclick="exportIconOverrides()">
+                                <i class="fas fa-download"></i> Exportar iconos
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="setting-card setting-card-compact">
+                    <h3><i class="fas fa-fill-drip"></i> Colores grupos</h3>
+                    <div class="icon-control-grid">
+                        <div class="setting-input icon-control-row">
+                            <select id="groupColorTarget" class="theme-select" onchange="syncGroupColorSelection()"></select>
+                            <input id="groupColorInput" class="theme-select color-input-inline" type="color" value="#16a34a" onchange="updateGroupColorPreview()" inputmode="none">
+                        </div>
+                        <div class="icon-picker-shell">
+                            <div id="groupColorPreview" class="icon-preview-box group-color-preview">
+                                <i class="fas fa-droplet"></i>
+                            </div>
+                            <div id="groupColorLabel" class="icon-selected-label">Seleccionado: grupo</div>
+                        </div>
+                        <p id="groupColorSummary" class="icon-summary-line">Usando colores automáticos.</p>
+                        <div class="settings-actions-grid">
+                            <button type="button" class="btn-primary" onclick="saveGroupColorOverride()">
+                                <i class="fas fa-floppy-disk"></i> Guardar color
+                            </button>
+                            <button type="button" class="btn-soft" onclick="resetCurrentGroupColorOverride()">
+                                <i class="fas fa-arrow-rotate-left"></i> Resetear grupo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bottom-nav">
+            <button type="button" class="nav-item active" data-view="categories">
+                <i class="fas fa-home"></i>
+                <span>Inicio</span>
+            </button>
+            <button type="button" class="nav-item" data-view="simulation">
+                <i class="fas fa-clock-rotate-left"></i>
+                <span>Historial</span>
+            </button>
+            <button type="button" class="nav-item" data-view="stats">
+                <i class="fas fa-chart-line"></i>
+                <span>Stats</span>
+            </button>
+            <button type="button" class="nav-item" data-view="settings">
+                <i class="fas fa-user"></i>
+                <span>Mi cuenta</span>
+            </button>
+        </div>
+    </div>
+
+    <button type="button" id="scrollTopBtn" class="scroll-top-btn hidden" onclick="scrollToTop()" aria-label="Volver arriba">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <div id="purchaseLogModal" class="modal-overlay hidden" onclick="closePurchaseLogModal()">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="purchaseLogTitle" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="purchaseLogTitle"><i class="fas fa-receipt"></i> Compra del día</h3>
+                <button type="button" class="icon-btn" onclick="closePurchaseLogModal()" aria-label="Cerrar detalle de compra">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div id="purchaseLogBody" class="modal-body"></div>
+        </div>
+    </div>
+
+    <div id="shareListModal" class="modal-overlay hidden" onclick="closeShareListModal()">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="shareListTitle" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="shareListTitle"><i class="fas fa-share-nodes"></i> Compartir lista</h3>
+                <button type="button" class="icon-btn" onclick="closeShareListModal()" aria-label="Cerrar opciones para compartir la lista">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body share-list-body">
+                <p class="share-list-copy" id="shareListCopy">Elige como quieres enviar tu lista de compra.</p>
+                <div class="share-txt-row">
+                    <button type="button" class="btn-secondary share-txt-btn" onclick="downloadShareTxt()" aria-label="Descargar TXT">
+                        <i class="fas fa-file-lines"></i> TXT
+                    </button>
+                    <button type="button" class="btn-primary share-txt-btn" onclick="shareTxtFile()" aria-label="Compartir TXT">
+                        <i class="fas fa-share"></i> Compartir TXT
+                    </button>
+                </div>
+                <div class="share-txt-row">
+                    <button type="button" class="btn-secondary share-txt-btn" onclick="downloadShareForm()" aria-label="Descargar formulario">
+                        <i class="fas fa-clipboard-check"></i> Formulario
+                    </button>
+                    <button type="button" class="btn-primary share-txt-btn" onclick="shareFormFile()" aria-label="Compartir formulario">
+                        <i class="fas fa-share"></i> Compartir formulario
+                    </button>
+                </div>
+                <div id="shareListItems" class="export-items"></div>
+                <div class="share-list-actions">
+                    <button type="button" class="share-option-btn whatsapp" onclick="shareTxtFile()">
+                        <i class="fab fa-whatsapp"></i>
+                        <span>WhatsApp</span>
+                    </button>
+                    <button type="button" class="share-option-btn email" onclick="shareListVia('email')">
+                        <i class="fas fa-envelope"></i>
+                        <span>Correo</span>
+                    </button>
+                    <button type="button" class="share-option-btn sms" onclick="shareListVia('sms')">
+                        <i class="fas fa-comment-sms"></i>
+                        <span>Mensaje</span>
+                    </button>
+                    <button type="button" class="share-option-btn generic" onclick="shareListVia('more')">
+                        <i class="fas fa-share-alt"></i>
+                        <span>Mas opciones</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="exportListModal" class="modal-overlay hidden" onclick="closeExportListModal()">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="exportListTitle" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3 id="exportListTitle"><i class="fas fa-file-export"></i> Exportar lista</h3>
+                <button type="button" class="icon-btn" onclick="closeExportListModal()" aria-label="Cerrar exportación">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body export-list-body">
+                <div id="exportFormatRow" class="export-format-row"></div>
+                <div id="exportListItems" class="export-items"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+    <script src="./dv-shop-catalog.js?v=20260611al"></script>
+    <script src="./dv-shop-app.js?v=20260611al"></script>
+</body>
+</html>
