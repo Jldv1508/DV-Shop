@@ -9,11 +9,11 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="DV Shop">
     <title>DV Shop - Tu compra inteligente</title>
-    <link rel="manifest" href="./manifest.webmanifest?v=20260611ao">
+    <link rel="manifest" href="./manifest.webmanifest?v=20260611ap">
     <link rel="icon" type="image/png" sizes="192x192" href="./dv-shop-icon-192.png">
     <link rel="apple-touch-icon" href="./dv-shop-icon-192.png">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <link rel="stylesheet" href="./dv-shop-app.css?v=20260611ao">
+    <link rel="stylesheet" href="./dv-shop-app.css?v=20260611ap">
 </head>
 <body>
     <div id="app">
@@ -185,6 +185,39 @@
                         <button type="button" class="btn-soft" onclick="clearCart()">
                             <i class="fas fa-broom"></i> Vaciar lista
                         </button>
+                    </div>
+                </div>
+
+                <div class="setting-card setting-card-compact">
+                    <h3><i class="fas fa-cloud"></i> Sincronizacion familia</h3>
+                    <div class="icon-control-grid">
+                        <div class="setting-input sync-input-row">
+                            <input id="syncSupabaseUrl" type="url" placeholder="https://TU-PROYECTO.supabase.co">
+                        </div>
+                        <div class="setting-input sync-input-row">
+                            <input id="syncSupabaseAnonKey" type="text" placeholder="Clave anon publica de Supabase">
+                        </div>
+                        <div class="setting-input sync-input-row">
+                            <input id="syncHouseholdId" type="text" placeholder="familia-dv-shop">
+                        </div>
+                        <p class="icon-summary-line sync-help-line">Usa la misma URL, clave y hogar en iPhone e iPad para compartir la misma lista.</p>
+                        <p id="syncStatus" class="icon-summary-line sync-status-line">Modo local. Sin nube configurada.</p>
+                        <div class="settings-actions-grid">
+                            <button type="button" class="btn-primary" onclick="saveSyncSettings()">
+                                <i class="fas fa-floppy-disk"></i> Guardar sync
+                            </button>
+                            <button type="button" class="btn-secondary" onclick="pullRemoteState(true)">
+                                <i class="fas fa-cloud-arrow-down"></i> Traer nube
+                            </button>
+                        </div>
+                        <div class="settings-actions-grid">
+                            <button type="button" class="btn-secondary" onclick="pushRemoteState(true)">
+                                <i class="fas fa-cloud-arrow-up"></i> Subir nube
+                            </button>
+                            <button type="button" class="btn-soft" onclick="clearSyncSettings()">
+                                <i class="fas fa-plug-circle-xmark"></i> Quitar sync
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -366,7 +399,7 @@
 
     <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
-    <script src="./dv-shop-catalog.js?v=20260611ao"></script>
-    <script src="./dv-shop-app.js?v=20260611ao"></script>
+    <script src="./dv-shop-catalog.js?v=20260611ap"></script>
+    <script src="./dv-shop-app.js?v=20260611ap"></script>
 </body>
 </html>

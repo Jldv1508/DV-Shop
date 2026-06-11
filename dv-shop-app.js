@@ -6,9 +6,13 @@ const PLACEHOLDER_IMAGE = "https://placehold.co/120x120/7c3aed/ffffff?text=DV";
 const STORAGE_KEY = "dvshop_data";
 const LEGACY_STORAGE_KEY = "mercadona_app_data";
 const THEME_KEY = "dvshop_theme";
+const SYNC_CONFIG_KEY = "dvshop_sync_config";
+const DEVICE_ID_KEY = "dvshop_device_id";
 const DEFAULT_THEME = "volcano";
-const APP_VERSION = "5.2";
+const APP_VERSION = "5.3";
 const LIST_TEMPLATE_VERSION = "1.0";
+const SYNC_PUSH_DEBOUNCE_MS = 1200;
+const SYNC_POLL_MS = 15000;
 const VISUAL_BLOCKS = [
     { id: "fresco", label: "Fresco", icon: "fa-carrot", description: "Comida, despensa y comida fresca" },
     { id: "bebidas", label: "Bebidas", icon: "fa-bottle-water", description: "Agua, refrescos, café, vino y zumos" },
@@ -256,6 +260,28 @@ let state = {
     currentCategoryHasSubcategories: false,
     loading: false
 };
+
+const syncRuntime = {
+    saveTimer: null,
+    pollTimer: null,
+    paused: false,
+    busy: false,
+    status: "Modo local. Sin nube configurada.",
+    lastRemoteUpdatedAt: null,
+    deviceId: ""
+};
+
+function getOrCreateDeviceId() {
+    const existing = localStorage.getItem(DEVICE_ID_KEY);
+    if (existing) {
+        return existing;
+    }
+
+    const created = window.crypto?.randomUUID?.()
+        || `device_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(DEVICE_ID_KEY, created);
+    return created;
+}
 
 function getCurrentTheme() {
     return document.documentElement.dataset.theme || DEFAULT_THEME;
@@ -3358,8 +3384,8 @@ function hideProgress() {
     }
 }
 
-function saveToLocalStorage() {
-    const dataToSave = {
+function buildPersistedData() {
+    return {
         cart: state.cart,
         savedLists: state.savedLists,
         simulationDraft: state.simulationDraft,
@@ -3375,9 +3401,71 @@ function saveToLocalStorage() {
         version: APP_VERSION,
         lastUpdated: new Date().toISOString()
     };
+}
 
+function applyPersistedData(data, options = {}) {
+    const {
+        showLoadedToast = false,
+        persistLocal = true
+    } = options;
+
+    state.cart = Array.isArray(data.cart) ? data.cart : [];
+    state.savedLists = Array.isArray(data.savedLists) ? data.savedLists : [];
+    state.simulationDraft = Array.isArray(data.simulationDraft) ? data.simulationDraft : [];
+    state.budget = data.budget || null;
+    state.purchaseHistory = data.purchaseHistory || {};
+    state.purchaseLog = Array.isArray(data.purchaseLog) ? data.purchaseLog : [];
+    state.iconOverrides = data.iconOverrides && typeof data.iconOverrides === "object" ? data.iconOverrides : {};
+    state.groupColorOverrides = data.groupColorOverrides && typeof data.groupColorOverrides === "object" ? data.groupColorOverrides : {};
+    state.trendOverrides = data.trendOverrides && typeof data.trendOverrides === "object" ? data.trendOverrides : {};
+    state.priceHistory = data.priceHistory && typeof data.priceHistory === "object" ? data.priceHistory : {};
+    state.lastPriceRefreshAt = data.lastPriceRefreshAt || null;
+
+    updateCartUI();
+    if (data.theme) {
+        setTheme(data.theme);
+    }
+
+    syncBudgetInputs();
+    updatePriceRefreshStatus(
+        state.lastPriceRefreshAt
+            ? `Última actualización diaria: ${new Date(state.lastPriceRefreshAt).toLocaleString("es-ES")}`
+            : "Pendiente de actualización diaria."
+    );
+
+    if (document.getElementById("simulationView")?.classList.contains("active")) {
+        renderSimulationView();
+    }
+    if (document.getElementById("statsView")?.classList.contains("active")) {
+        renderStats();
+    }
+    if (document.getElementById("settingsView")?.classList.contains("active")) {
+        renderIconOverrideControls();
+        renderGroupColorControls();
+        renderSyncSettings();
+    }
+
+    if (persistLocal) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            ...buildPersistedData(),
+            lastUpdated: data.lastUpdated || new Date().toISOString()
+        }));
+    }
+
+    if (showLoadedToast) {
+        showToast("Datos cargados correctamente", 1500);
+    }
+}
+
+function saveToLocalStorage(options = {}) {
+    const { skipRemoteSync = false } = options;
+    const dataToSave = buildPersistedData();
     localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
     updateStatsInfo();
+
+    if (!skipRemoteSync) {
+        scheduleRemoteSync();
+    }
 }
 
 function loadFromLocalStorage() {
@@ -3386,39 +3474,277 @@ function loadFromLocalStorage() {
 
     try {
         const data = JSON.parse(saved);
-        state.cart = data.cart || [];
-        state.savedLists = Array.isArray(data.savedLists) ? data.savedLists : [];
-        state.simulationDraft = Array.isArray(data.simulationDraft) ? data.simulationDraft : [];
-        state.budget = data.budget || null;
-        state.purchaseHistory = data.purchaseHistory || {};
-        state.purchaseLog = Array.isArray(data.purchaseLog) ? data.purchaseLog : [];
-        state.iconOverrides = data.iconOverrides && typeof data.iconOverrides === "object" ? data.iconOverrides : {};
-        state.groupColorOverrides = data.groupColorOverrides && typeof data.groupColorOverrides === "object" ? data.groupColorOverrides : {};
-        state.trendOverrides = data.trendOverrides && typeof data.trendOverrides === "object" ? data.trendOverrides : {};
-        state.priceHistory = data.priceHistory && typeof data.priceHistory === "object" ? data.priceHistory : {};
-        state.lastPriceRefreshAt = data.lastPriceRefreshAt || null;
-        updateCartUI();
-        if (data.theme) {
-            setTheme(data.theme);
-        }
-
-        syncBudgetInputs();
-
-        updatePriceRefreshStatus(
-            state.lastPriceRefreshAt
-                ? `Última actualización diaria: ${new Date(state.lastPriceRefreshAt).toLocaleString("es-ES")}`
-                : "Pendiente de actualización diaria."
-        );
-
-        showToast("Datos cargados correctamente", 1500);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({
-            ...data,
-            theme: getCurrentTheme(),
-            version: data.version || APP_VERSION
-        }));
+        applyPersistedData(data, { showLoadedToast: true });
     } catch (error) {
         console.error("Error loading data:", error);
     }
+}
+
+function getSyncConfig() {
+    try {
+        const raw = JSON.parse(localStorage.getItem(SYNC_CONFIG_KEY) || "{}");
+        const supabaseUrl = cleanDisplayText(raw.supabaseUrl || "").replace(/\/+$/, "");
+        const supabaseAnonKey = cleanDisplayText(raw.supabaseAnonKey || "");
+        const householdId = cleanDisplayText(raw.householdId || "");
+        return {
+            supabaseUrl,
+            supabaseAnonKey,
+            householdId,
+            enabled: Boolean(supabaseUrl && supabaseAnonKey && householdId)
+        };
+    } catch (error) {
+        return {
+            supabaseUrl: "",
+            supabaseAnonKey: "",
+            householdId: "",
+            enabled: false
+        };
+    }
+}
+
+function setSyncStatus(message, isError = false) {
+    syncRuntime.status = message;
+    const target = document.getElementById("syncStatus");
+    if (!target) return;
+    target.textContent = message;
+    target.classList.toggle("is-error", Boolean(isError));
+}
+
+function renderSyncSettings() {
+    const config = getSyncConfig();
+    const urlInput = document.getElementById("syncSupabaseUrl");
+    const keyInput = document.getElementById("syncSupabaseAnonKey");
+    const householdInput = document.getElementById("syncHouseholdId");
+
+    if (urlInput && document.activeElement !== urlInput) {
+        urlInput.value = config.supabaseUrl;
+    }
+    if (keyInput && document.activeElement !== keyInput) {
+        keyInput.value = config.supabaseAnonKey;
+    }
+    if (householdInput && document.activeElement !== householdInput) {
+        householdInput.value = config.householdId;
+    }
+
+    if (!config.enabled) {
+        setSyncStatus("Modo local. Sin nube configurada.");
+        return;
+    }
+
+    if (syncRuntime.lastRemoteUpdatedAt) {
+        setSyncStatus(`Sync activo. Ultima nube: ${new Date(syncRuntime.lastRemoteUpdatedAt).toLocaleString("es-ES")}`);
+        return;
+    }
+
+    setSyncStatus(`Sync activo para hogar: ${config.householdId}`);
+}
+
+function buildSupabaseHeaders(config) {
+    return {
+        apikey: config.supabaseAnonKey,
+        Authorization: `Bearer ${config.supabaseAnonKey}`,
+        "Content-Type": "application/json"
+    };
+}
+
+async function fetchRemoteStateRecord(config) {
+    const query = new URLSearchParams({
+        select: "household_id,updated_at,device_id,payload",
+        household_id: `eq.${config.householdId}`,
+        limit: "1"
+    });
+    const response = await fetch(`${config.supabaseUrl}/rest/v1/dv_shop_state?${query.toString()}`, {
+        headers: buildSupabaseHeaders(config)
+    });
+
+    if (!response.ok) {
+        throw new Error(`Sync GET ${response.status}`);
+    }
+
+    const rows = await response.json();
+    return Array.isArray(rows) ? rows[0] || null : null;
+}
+
+function startRemoteSyncPolling() {
+    if (syncRuntime.pollTimer) {
+        clearInterval(syncRuntime.pollTimer);
+        syncRuntime.pollTimer = null;
+    }
+
+    if (!getSyncConfig().enabled) {
+        return;
+    }
+
+    syncRuntime.pollTimer = setInterval(() => {
+        if (!document.hidden) {
+            pullRemoteState(false);
+        }
+    }, SYNC_POLL_MS);
+}
+
+function scheduleRemoteSync() {
+    if (syncRuntime.paused || !getSyncConfig().enabled) {
+        return;
+    }
+
+    if (syncRuntime.saveTimer) {
+        clearTimeout(syncRuntime.saveTimer);
+    }
+
+    syncRuntime.saveTimer = setTimeout(() => {
+        pushRemoteState(false);
+    }, SYNC_PUSH_DEBOUNCE_MS);
+}
+
+async function pushRemoteState(manual = false) {
+    const config = getSyncConfig();
+    if (!config.enabled) {
+        if (manual) {
+            showToast("Configura Supabase y el hogar antes de sincronizar", 2400);
+        }
+        renderSyncSettings();
+        return false;
+    }
+
+    if (syncRuntime.busy) {
+        return false;
+    }
+
+    syncRuntime.busy = true;
+    setSyncStatus("Subiendo cambios a la nube...");
+
+    try {
+        const payload = buildPersistedData();
+        const updatedAt = payload.lastUpdated || new Date().toISOString();
+        const response = await fetch(`${config.supabaseUrl}/rest/v1/dv_shop_state?on_conflict=household_id`, {
+            method: "POST",
+            headers: {
+                ...buildSupabaseHeaders(config),
+                Prefer: "resolution=merge-duplicates,return=representation"
+            },
+            body: JSON.stringify([{
+                household_id: config.householdId,
+                device_id: syncRuntime.deviceId,
+                updated_at: updatedAt,
+                payload
+            }])
+        });
+
+        if (!response.ok) {
+            throw new Error(`Sync POST ${response.status}`);
+        }
+
+        const rows = await response.json();
+        syncRuntime.lastRemoteUpdatedAt = rows?.[0]?.updated_at || updatedAt;
+        renderSyncSettings();
+        if (manual) {
+            showToast("Lista subida a la nube", 2200);
+        }
+        return true;
+    } catch (error) {
+        console.error("Error subiendo sync:", error);
+        setSyncStatus("Error al subir a la nube", true);
+        if (manual) {
+            showToast("No se pudo subir a la nube", 2400);
+        }
+        return false;
+    } finally {
+        syncRuntime.busy = false;
+    }
+}
+
+async function pullRemoteState(manual = false) {
+    const config = getSyncConfig();
+    if (!config.enabled) {
+        if (manual) {
+            showToast("Configura Supabase y el hogar antes de sincronizar", 2400);
+        }
+        renderSyncSettings();
+        return false;
+    }
+
+    if (syncRuntime.busy) {
+        return false;
+    }
+
+    syncRuntime.busy = true;
+    setSyncStatus("Leyendo datos de la nube...");
+
+    try {
+        const row = await fetchRemoteStateRecord(config);
+        if (!row?.payload) {
+            setSyncStatus("La nube aun no tiene datos.");
+            if (manual) {
+                showToast("Aun no hay lista guardada en la nube", 2200);
+            }
+            return false;
+        }
+
+        const localUpdatedAt = Date.parse(buildPersistedData().lastUpdated || 0) || 0;
+        const remoteUpdatedAt = Date.parse(row.updated_at || row.payload.lastUpdated || 0) || 0;
+
+        if (!manual && remoteUpdatedAt <= localUpdatedAt) {
+            syncRuntime.lastRemoteUpdatedAt = row.updated_at || row.payload.lastUpdated || null;
+            renderSyncSettings();
+            return false;
+        }
+
+        syncRuntime.paused = true;
+        applyPersistedData(row.payload, { persistLocal: true });
+        syncRuntime.paused = false;
+        syncRuntime.lastRemoteUpdatedAt = row.updated_at || row.payload.lastUpdated || null;
+        renderSyncSettings();
+        if (manual || remoteUpdatedAt > localUpdatedAt) {
+            showToast("Lista actualizada desde la nube", 2200);
+        }
+        return true;
+    } catch (error) {
+        console.error("Error bajando sync:", error);
+        setSyncStatus("Error al leer la nube", true);
+        if (manual) {
+            showToast("No se pudo leer la nube", 2400);
+        }
+        return false;
+    } finally {
+        syncRuntime.paused = false;
+        syncRuntime.busy = false;
+    }
+}
+
+function saveSyncSettings() {
+    const supabaseUrl = cleanDisplayText(document.getElementById("syncSupabaseUrl")?.value || "").replace(/\/+$/, "");
+    const supabaseAnonKey = cleanDisplayText(document.getElementById("syncSupabaseAnonKey")?.value || "");
+    const householdId = cleanDisplayText(document.getElementById("syncHouseholdId")?.value || "");
+
+    localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify({
+        supabaseUrl,
+        supabaseAnonKey,
+        householdId
+    }));
+
+    renderSyncSettings();
+    startRemoteSyncPolling();
+    showToast(
+        supabaseUrl && supabaseAnonKey && householdId
+            ? "Sync guardado. Usa estos mismos datos en el otro dispositivo"
+            : "Sync guardado en modo local",
+        2600
+    );
+}
+
+function clearSyncSettings() {
+    localStorage.removeItem(SYNC_CONFIG_KEY);
+    if (syncRuntime.saveTimer) {
+        clearTimeout(syncRuntime.saveTimer);
+        syncRuntime.saveTimer = null;
+    }
+    if (syncRuntime.pollTimer) {
+        clearInterval(syncRuntime.pollTimer);
+        syncRuntime.pollTimer = null;
+    }
+    syncRuntime.lastRemoteUpdatedAt = null;
+    renderSyncSettings();
+    showToast("Sincronizacion en nube desactivada", 2200);
 }
 
 function updateCartUI() {
@@ -5224,6 +5550,8 @@ function switchView(view) {
 
     if (view === "settings") {
         renderIconOverrideControls();
+        renderGroupColorControls();
+        renderSyncSettings();
     }
 
     if (view !== "categories") {
@@ -5324,6 +5652,12 @@ document.addEventListener("keydown", (event) => {
     }
 });
 
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && getSyncConfig().enabled) {
+        pullRemoteState(false);
+    }
+});
+
 window.addEventListener("scroll", updateFloatingChrome, { passive: true });
 
 document.querySelectorAll(".nav-item").forEach((button) => {
@@ -5408,17 +5742,24 @@ window.downloadShareTxt = downloadShareTxt;
 window.shareTxtFile = shareTxtFile;
 window.downloadShareForm = downloadShareForm;
 window.shareFormFile = shareFormFile;
+window.saveSyncSettings = saveSyncSettings;
+window.clearSyncSettings = clearSyncSettings;
+window.pushRemoteState = pushRemoteState;
+window.pullRemoteState = pullRemoteState;
 
 if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=20260611ao", { scope: "./" }).catch((error) => {
+        navigator.serviceWorker.register("./service-worker.js?v=20260611ap", { scope: "./" }).catch((error) => {
             console.error("No se pudo registrar el service worker:", error);
         });
     });
 }
 
+syncRuntime.deviceId = getOrCreateDeviceId();
 loadTheme();
 loadFromLocalStorage();
+renderSyncSettings();
+startRemoteSyncPolling();
 updatePriceRefreshStatus(
     state.lastPriceRefreshAt
         ? `Última actualización diaria: ${new Date(state.lastPriceRefreshAt).toLocaleString("es-ES")}`
@@ -5430,6 +5771,10 @@ renderGroupColorControls();
 fetchCategories().finally(() => {
     renderIconOverrideControls();
     renderGroupColorControls();
+    renderSyncSettings();
     refreshDailyPrices(false);
 });
 updateFloatingChrome();
+if (getSyncConfig().enabled) {
+    pullRemoteState(false);
+}

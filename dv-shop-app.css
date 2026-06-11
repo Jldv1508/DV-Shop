@@ -1787,6 +1787,27 @@ button:disabled {
     margin-bottom: 0;
 }
 
+.sync-input-row {
+    margin-bottom: 0;
+}
+
+.sync-input-row input {
+    width: 100%;
+}
+
+.sync-help-line,
+.sync-status-line {
+    margin-top: 2px;
+}
+
+.sync-status-line {
+    font-weight: 600;
+}
+
+.sync-status-line.is-error {
+    color: var(--danger);
+}
+
 #budgetDisplay {
     font-size: 0.74rem;
     color: var(--text-light);
