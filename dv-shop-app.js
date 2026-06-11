@@ -13,8 +13,6 @@ const APP_VERSION = "5.3";
 const LIST_TEMPLATE_VERSION = "1.0";
 const SYNC_PUSH_DEBOUNCE_MS = 1200;
 const SYNC_POLL_MS = 15000;
-const DEBUG_SYNC_SERVER_URL = "http://192.168.1.25:7777/event";
-const DEBUG_SYNC_SESSION_ID = "supabase-sync-upload";
 const VISUAL_BLOCKS = [
     { id: "fresco", label: "Fresco", icon: "fa-carrot", description: "Comida, despensa y comida fresca" },
     { id: "bebidas", label: "Bebidas", icon: "fa-bottle-water", description: "Agua, refrescos, café, vino y zumos" },
@@ -3496,9 +3494,6 @@ function getSyncConfig() {
         const supabaseUrl = normalizeSupabaseProjectUrl(raw.supabaseUrl || "");
         const supabaseAnonKey = cleanDisplayText(raw.supabaseAnonKey || "");
         const householdId = cleanDisplayText(raw.householdId || "");
-        // #region debug-point E:get-sync-config
-        fetch(DEBUG_SYNC_SERVER_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: DEBUG_SYNC_SESSION_ID, runId: "pre-fix", hypothesisId: "E", location: "dv-shop-app.js:getSyncConfig", msg: "[DEBUG] Sync config loaded", data: { enabled: Boolean(supabaseUrl && supabaseAnonKey && householdId), hasUrl: Boolean(supabaseUrl), hasAnonKey: Boolean(supabaseAnonKey), householdIdLength: householdId.length }, ts: Date.now() }) }).catch(() => {});
-        // #endregion
         return {
             supabaseUrl,
             supabaseAnonKey,
@@ -3572,16 +3567,10 @@ async function fetchRemoteStateRecord(config) {
 
     if (!response.ok) {
         const errorBody = (await response.text()).slice(0, 240);
-        // #region debug-point B:pull-http-error
-        fetch(DEBUG_SYNC_SERVER_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: DEBUG_SYNC_SESSION_ID, runId: "pre-fix", hypothesisId: "B", location: "dv-shop-app.js:fetchRemoteStateRecord:http-error", msg: "[DEBUG] Supabase fetch returned error", data: { status: response.status, householdId: config.householdId, errorBody }, ts: Date.now() }) }).catch(() => {});
-        // #endregion
         throw new Error(`Sync GET ${response.status}: ${errorBody}`);
     }
 
     const rows = await response.json();
-    // #region debug-point D:fetch-rows
-    fetch(DEBUG_SYNC_SERVER_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: DEBUG_SYNC_SESSION_ID, runId: "pre-fix", hypothesisId: "D", location: "dv-shop-app.js:fetchRemoteStateRecord:rows", msg: "[DEBUG] Supabase fetch rows", data: { rowCount: Array.isArray(rows) ? rows.length : -1, householdId: config.householdId }, ts: Date.now() }) }).catch(() => {});
-    // #endregion
     return Array.isArray(rows) ? rows[0] || null : null;
 }
 
@@ -3603,9 +3592,6 @@ function startRemoteSyncPolling() {
 }
 
 function scheduleRemoteSync() {
-    // #region debug-point A:schedule-remote-sync
-    fetch(DEBUG_SYNC_SERVER_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: DEBUG_SYNC_SESSION_ID, runId: "pre-fix", hypothesisId: "A", location: "dv-shop-app.js:scheduleRemoteSync", msg: "[DEBUG] Scheduling remote sync", data: { paused: syncRuntime.paused, enabled: getSyncConfig().enabled, hasTimer: Boolean(syncRuntime.saveTimer) }, ts: Date.now() }) }).catch(() => {});
-    // #endregion
     if (syncRuntime.paused || !getSyncConfig().enabled) {
         return;
     }
@@ -3621,9 +3607,6 @@ function scheduleRemoteSync() {
 
 async function pushRemoteState(manual = false) {
     const config = getSyncConfig();
-    // #region debug-point A:push-entry
-    fetch(DEBUG_SYNC_SERVER_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: DEBUG_SYNC_SESSION_ID, runId: "pre-fix", hypothesisId: "A", location: "dv-shop-app.js:pushRemoteState:entry", msg: "[DEBUG] Enter pushRemoteState", data: { manual, enabled: config.enabled, busy: syncRuntime.busy, householdIdLength: config.householdId.length }, ts: Date.now() }) }).catch(() => {});
-    // #endregion
     if (!config.enabled) {
         if (manual) {
             showToast("Configura Supabase y el hogar antes de sincronizar", 2400);
@@ -3642,9 +3625,6 @@ async function pushRemoteState(manual = false) {
     try {
         const payload = buildPersistedData();
         const updatedAt = payload.lastUpdated || new Date().toISOString();
-        // #region debug-point C:push-request
-        fetch(DEBUG_SYNC_SERVER_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: DEBUG_SYNC_SESSION_ID, runId: "pre-fix", hypothesisId: "C", location: "dv-shop-app.js:pushRemoteState:request", msg: "[DEBUG] Sending Supabase upsert", data: { manual, householdId: config.householdId, updatedAt, cartItems: Array.isArray(payload.cart) ? payload.cart.length : -1, savedLists: Array.isArray(payload.savedLists) ? payload.savedLists.length : -1, purchaseLog: Array.isArray(payload.purchaseLog) ? payload.purchaseLog.length : -1 }, ts: Date.now() }) }).catch(() => {});
-        // #endregion
         const response = await fetch(`${config.supabaseUrl}/rest/v1/dv_shop_state?on_conflict=household_id`, {
             method: "POST",
             headers: {
@@ -3661,16 +3641,10 @@ async function pushRemoteState(manual = false) {
 
         if (!response.ok) {
             const errorBody = (await response.text()).slice(0, 240);
-            // #region debug-point B:push-http-error
-            fetch(DEBUG_SYNC_SERVER_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: DEBUG_SYNC_SESSION_ID, runId: "pre-fix", hypothesisId: "B", location: "dv-shop-app.js:pushRemoteState:http-error", msg: "[DEBUG] Supabase upsert returned error", data: { status: response.status, manual, errorBody }, ts: Date.now() }) }).catch(() => {});
-            // #endregion
             throw new Error(`Sync POST ${response.status}: ${errorBody}`);
         }
 
         const rows = await response.json();
-        // #region debug-point C:push-success
-        fetch(DEBUG_SYNC_SERVER_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: DEBUG_SYNC_SESSION_ID, runId: "pre-fix", hypothesisId: "C", location: "dv-shop-app.js:pushRemoteState:success", msg: "[DEBUG] Supabase upsert succeeded", data: { rowCount: Array.isArray(rows) ? rows.length : -1, returnedUpdatedAt: rows?.[0]?.updated_at || null, returnedHouseholdId: rows?.[0]?.household_id || null }, ts: Date.now() }) }).catch(() => {});
-        // #endregion
         syncRuntime.lastRemoteUpdatedAt = rows?.[0]?.updated_at || updatedAt;
         renderSyncSettings();
         if (manual) {
@@ -3678,9 +3652,6 @@ async function pushRemoteState(manual = false) {
         }
         return true;
     } catch (error) {
-        // #region debug-point B:push-catch
-        fetch(DEBUG_SYNC_SERVER_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: DEBUG_SYNC_SESSION_ID, runId: "pre-fix", hypothesisId: "B", location: "dv-shop-app.js:pushRemoteState:catch", msg: "[DEBUG] pushRemoteState failed", data: { manual, error: error instanceof Error ? error.message : String(error) }, ts: Date.now() }) }).catch(() => {});
-        // #endregion
         const debugMessage = error instanceof Error ? error.message : String(error);
         setSyncStatus(`Error al subir: ${debugMessage.slice(0, 140)}`, true);
         if (manual) {
@@ -3694,9 +3665,6 @@ async function pushRemoteState(manual = false) {
 
 async function pullRemoteState(manual = false) {
     const config = getSyncConfig();
-    // #region debug-point D:pull-entry
-    fetch(DEBUG_SYNC_SERVER_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: DEBUG_SYNC_SESSION_ID, runId: "pre-fix", hypothesisId: "D", location: "dv-shop-app.js:pullRemoteState:entry", msg: "[DEBUG] Enter pullRemoteState", data: { manual, enabled: config.enabled, busy: syncRuntime.busy, lastRemoteUpdatedAt: syncRuntime.lastRemoteUpdatedAt || null }, ts: Date.now() }) }).catch(() => {});
-    // #endregion
     if (!config.enabled) {
         if (manual) {
             showToast("Configura Supabase y el hogar antes de sincronizar", 2400);
@@ -3714,9 +3682,6 @@ async function pullRemoteState(manual = false) {
 
     try {
         const row = await fetchRemoteStateRecord(config);
-        // #region debug-point D:pull-response
-        fetch(DEBUG_SYNC_SERVER_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: DEBUG_SYNC_SESSION_ID, runId: "pre-fix", hypothesisId: "D", location: "dv-shop-app.js:pullRemoteState:response", msg: "[DEBUG] pullRemoteState received row", data: { hasRow: Boolean(row), hasPayload: Boolean(row?.payload), remoteUpdatedAt: row?.updated_at || row?.payload?.lastUpdated || null, remoteCartItems: Array.isArray(row?.payload?.cart) ? row.payload.cart.length : -1 }, ts: Date.now() }) }).catch(() => {});
-        // #endregion
         if (!row?.payload) {
             setSyncStatus("La nube aun no tiene datos.");
             if (manual) {
@@ -3761,10 +3726,6 @@ function saveSyncSettings() {
     const supabaseUrl = normalizeSupabaseProjectUrl(document.getElementById("syncSupabaseUrl")?.value || "");
     const supabaseAnonKey = cleanDisplayText(document.getElementById("syncSupabaseAnonKey")?.value || "");
     const householdId = cleanDisplayText(document.getElementById("syncHouseholdId")?.value || "");
-
-    // #region debug-point E:save-sync-settings
-    fetch(DEBUG_SYNC_SERVER_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId: DEBUG_SYNC_SESSION_ID, runId: "pre-fix", hypothesisId: "E", location: "dv-shop-app.js:saveSyncSettings", msg: "[DEBUG] Saving sync settings", data: { hasUrl: Boolean(supabaseUrl), hasAnonKey: Boolean(supabaseAnonKey), householdIdLength: householdId.length }, ts: Date.now() }) }).catch(() => {});
-    // #endregion
 
     localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify({
         supabaseUrl,
