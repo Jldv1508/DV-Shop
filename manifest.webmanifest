@@ -2,7 +2,7 @@
   "name": "DV Shop",
   "short_name": "DV Shop",
   "description": "Lista de compra inteligente, compacta y compartible para movil.",
-  "start_url": "./dv-shop.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

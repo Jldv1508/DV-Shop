@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/dv-shop.html"
+    },
+    {
+      "source": "/__proxy",
+      "destination": "/api/proxy"
+    }
+  ]
+}

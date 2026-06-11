@@ -5411,7 +5411,7 @@ window.shareFormFile = shareFormFile;
 
 if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=20260611am", { scope: "./" }).catch((error) => {
+        navigator.serviceWorker.register("./service-worker.js?v=20260611an", { scope: "./" }).catch((error) => {
             console.error("No se pudo registrar el service worker:", error);
         });
     });

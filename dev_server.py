@@ -1,3 +1,4 @@
+import os
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import ssl
 import urllib.error
@@ -18,6 +19,10 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path in ("", "/", "/index.html"):
+            self.path = "/dv-shop.html"
+            return super().do_GET()
+
         if parsed.path == "/__proxy":
             qs = parse_qs(parsed.query)
             url = (qs.get("url") or [None])[0]
@@ -65,7 +70,10 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 def main():
-    server = ThreadingHTTPServer(("127.0.0.1", 8000), Handler)
+    host = "0.0.0.0"
+    port = int(os.environ.get("PORT", "8000"))
+    server = ThreadingHTTPServer((host, port), Handler)
+    print(f"DV Shop server running on http://{host}:{port}", flush=True)
     server.serve_forever()
 
 
