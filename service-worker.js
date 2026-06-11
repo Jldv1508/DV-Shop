@@ -1,11 +1,11 @@
-const CACHE_NAME = "dv-shop-pwa-20260611an";
+const CACHE_NAME = "dv-shop-pwa-20260611ao";
 const APP_SHELL = [
     "./",
     "./dv-shop.html",
-    "./dv-shop-app.css?v=20260611an",
-    "./dv-shop-app.js?v=20260611an",
-    "./dv-shop-catalog.js?v=20260611an",
-    "./manifest.webmanifest?v=20260611an",
+    "./dv-shop-app.css?v=20260611ao",
+    "./dv-shop-app.js?v=20260611ao",
+    "./dv-shop-catalog.js?v=20260611ao",
+    "./manifest.webmanifest?v=20260611ao",
     "./dv-shop-icon-192.png",
     "./dv-shop-icon-512.png"
 ];
@@ -43,6 +43,11 @@ self.addEventListener("fetch", (event) => {
 
     const url = new URL(request.url);
     if (url.origin !== self.location.origin) {
+        return;
+    }
+
+    if (url.pathname === "/__proxy" || url.pathname === "/api/proxy" || url.pathname === "/proxy.php") {
+        event.respondWith(fetch(request));
         return;
     }
 
