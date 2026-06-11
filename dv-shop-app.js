@@ -3485,10 +3485,15 @@ function loadFromLocalStorage() {
     }
 }
 
+function normalizeSupabaseProjectUrl(value) {
+    const cleaned = cleanDisplayText(value || "").replace(/\/+$/, "");
+    return cleaned.replace(/\/rest\/v1$/i, "");
+}
+
 function getSyncConfig() {
     try {
         const raw = JSON.parse(localStorage.getItem(SYNC_CONFIG_KEY) || "{}");
-        const supabaseUrl = cleanDisplayText(raw.supabaseUrl || "").replace(/\/+$/, "");
+        const supabaseUrl = normalizeSupabaseProjectUrl(raw.supabaseUrl || "");
         const supabaseAnonKey = cleanDisplayText(raw.supabaseAnonKey || "");
         const householdId = cleanDisplayText(raw.householdId || "");
         // #region debug-point E:get-sync-config
@@ -3753,7 +3758,7 @@ async function pullRemoteState(manual = false) {
 }
 
 function saveSyncSettings() {
-    const supabaseUrl = cleanDisplayText(document.getElementById("syncSupabaseUrl")?.value || "").replace(/\/+$/, "");
+    const supabaseUrl = normalizeSupabaseProjectUrl(document.getElementById("syncSupabaseUrl")?.value || "");
     const supabaseAnonKey = cleanDisplayText(document.getElementById("syncSupabaseAnonKey")?.value || "");
     const householdId = cleanDisplayText(document.getElementById("syncHouseholdId")?.value || "");
 
@@ -5794,7 +5799,7 @@ window.pullRemoteState = pullRemoteState;
 
 if ("serviceWorker" in navigator && window.isSecureContext) {
     window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./service-worker.js?v=20260611as", { scope: "./" }).catch((error) => {
+        navigator.serviceWorker.register("./service-worker.js?v=20260611at", { scope: "./" }).catch((error) => {
             console.error("No se pudo registrar el service worker:", error);
         });
     });
